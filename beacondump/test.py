@@ -98,25 +98,25 @@ class TestDump (unittest.TestCase):
         
         conn.getresponse.return_value.status = 200
         responses = [
-            # top-level has all four features
-            '''{{"d":[{F1},{F2},{F3},{F4}]}}'''.format(**Features),
+            # top-level has limit three features
+            '''{{"d":[{F1},{F2},{F3}]}}'''.format(**Features),
             
             # first two recursed boxes have no features
             '''{"d":[]}''',
             '''{"d":[]}''',
             
-            # third recursed box has all four features
-            '''{{"d":[{F1},{F2},{F3},{F4}]}}'''.format(**Features),
+            # third recursed box has limit three features
+            '''{{"d":[{F1},{F2},{F3}]}}'''.format(**Features),
             
                 # first two re-recursed boxes have no features
                 '''{"d":[]}''',
                 '''{"d":[]}''',
             
-                # third re-recursed box has three features
-                '''{{"d":[{F1},{F2},{F3}]}}'''.format(**Features),
+                # third re-recursed box has first two features
+                '''{{"d":[{F1},{F2}]}}'''.format(**Features),
             
-                # fourth re-recursed box has last feature
-                '''{{"d":[{F4}]}}'''.format(**Features),
+                # fourth re-recursed box has last two features
+                '''{{"d":[{F3},{F4}]}}'''.format(**Features),
             
             # fourth recursed box has no features
             '''{"d":[]}''',
