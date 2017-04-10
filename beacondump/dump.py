@@ -1,4 +1,4 @@
-import sys, json
+import sys, json, copy
 import http.client
 import urllib.parse
 import shapely.wkt
@@ -41,12 +41,16 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
         This is meant to be an overly-large, generous bbox that should
         encompass any reasonable county or city data source.
     '''
-    body_template['layerId'] = layer_id
+    body = copy.deepcopy(body_template)
+    body['layerId'] = int(layer_id)
     
     conn.request(
         'POST', url=layer_path,
-        body=json.dumps(body_template),
-        headers={'Content-Type': 'application/json', 'User-Agent': 'OA'}
+        body=json.dumps(body),
+        headers={
+            'Content-Type': 'application/json',
+            'User-Agent': 'OA',
+            }
         )
     
     resp = conn.getresponse()
