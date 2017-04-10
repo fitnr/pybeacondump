@@ -70,6 +70,18 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
 
     return xmin, ymin, xmax, ymax
 
+def partition_bbox(xmin, ymin, xmax, ymax):
+    '''
+    '''
+    xmid, ymid = xmin/2 + xmax/2, ymin/2 + ymax/2
+    
+    return [
+        (xmin, ymin, xmid, ymid),
+        (xmin, ymid, xmid, ymax),
+        (xmid, ymin, xmax, ymid),
+        (xmid, ymid, xmax, ymax),
+        ]
+
 def recursively_descend(conn, layer_path, layer_id, bbox, limit=None):
     '''
     '''
@@ -88,8 +100,22 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=None):
     if resp.status not in range(200, 299):
         raise RuntimeError('Bad status in recursively_descend')
 
-    results = json.load(resp)
-    return results.get('d', [])
+    features = json.load(resp).get('d', [])
+    
+    if limit is None:
+        # this is our first time, we don't actually know how many things there are
+        limit = len(features)
+
+    if len(features) >= limit:
+        # there are too many features, recurse!
+        bbox1, bbox2, bbox3, bbox4 = partition_bbox(*bbox)
+        return recursively_descend(conn, layer_path, layer_id, bbox1, limit) \
+             + recursively_descend(conn, layer_path, layer_id, bbox2, limit) \
+             + recursively_descend(conn, layer_path, layer_id, bbox3, limit) \
+             + recursively_descend(conn, layer_path, layer_id, bbox4, limit)
+    else:
+        # we are good.
+        return features
 
 if __name__ == '__main__':
     _, raw_url, layer_id = sys.argv
