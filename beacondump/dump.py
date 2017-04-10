@@ -3,7 +3,12 @@ import http.client
 import urllib.parse
 import shapely.wkt
 
-body_template = {
+BEACON_HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'OA',
+    }
+
+BODY_TEMPLATE = {
     "layerId": None,
     "useSelection": False,
     "ext": {
@@ -41,16 +46,13 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
         This is meant to be an overly-large, generous bbox that should
         encompass any reasonable county or city data source.
     '''
-    body = copy.deepcopy(body_template)
+    body = copy.deepcopy(BODY_TEMPLATE)
     body['layerId'] = int(layer_id)
     
     conn.request(
         'POST', url=layer_path,
         body=json.dumps(body),
-        headers={
-            'Content-Type': 'application/json',
-            'User-Agent': 'OA',
-            }
+        headers=BEACON_HEADERS
         )
     
     resp = conn.getresponse()
@@ -68,9 +70,32 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
 
     return xmin, ymin, xmax, ymax
 
+def recursively_descend(conn, layer_path, layer_id, bbox, limit=None):
+    '''
+    '''
+    body = copy.deepcopy(BODY_TEMPLATE)
+    body['layerId'], body['featureLimit'] = int(layer_id), 0
+    body['ext'] = dict(minx=bbox[0], miny=bbox[1], maxx=bbox[2], maxy=bbox[3])
+    
+    conn.request(
+        'POST', url=layer_path,
+        body=json.dumps(body),
+        headers=BEACON_HEADERS
+        )
+    
+    resp = conn.getresponse()
+    
+    if resp.status not in range(200, 299):
+        raise RuntimeError('Bad status in recursively_descend')
+
+    results = json.load(resp)
+    return results.get('d', [])
+
 if __name__ == '__main__':
     _, raw_url, layer_id = sys.argv
     
     conn, layer_path = get_connection(raw_url)
     bbox = get_starting_bbox(conn, layer_path, layer_id)
     print(bbox)
+    
+    recursively_descend(conn, layer_path, layer_id, bbox)
