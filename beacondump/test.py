@@ -80,7 +80,7 @@ class TestDump (unittest.TestCase):
             self.assertEqual(args, ('POST', ))
             self.assertEqual(kwargs['url'], path)
             self.assertEqual(body['layerId'], 13494)
-            self.assertEqual(body['featureLimit'], 0)
+            self.assertIn(body['featureLimit'], (0, 4))
             self.assertEqual(body['ext'], {
                 'minx': _bbox[0], 'miny': _bbox[1], 'maxx': _bbox[2], 'maxy': _bbox[3]
                 })
@@ -136,7 +136,7 @@ class TestDump (unittest.TestCase):
             self.assertEqual(args, ('POST', ))
             self.assertEqual(kwargs['url'], path)
             self.assertEqual(body['layerId'], 13494)
-            self.assertEqual(body['featureLimit'], 0)
+            self.assertIn(body['featureLimit'], (0, 3))
             self.assertEqual(body['ext'], {
                 'minx': _bbox[0], 'miny': _bbox[1], 'maxx': _bbox[2], 'maxy': _bbox[3]
                 })

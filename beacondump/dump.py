@@ -82,11 +82,11 @@ def partition_bbox(xmin, ymin, xmax, ymax):
         (xmid, ymid, xmax, ymax),
         ]
 
-def recursively_descend(conn, layer_path, layer_id, bbox, limit=None, depth=0):
+def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
     '''
     '''
     body = copy.deepcopy(BODY_TEMPLATE)
-    body['layerId'], body['featureLimit'] = int(layer_id), 0
+    body['layerId'], body['featureLimit'] = int(layer_id), limit
     body['ext'] = dict(minx=bbox[0], miny=bbox[1], maxx=bbox[2], maxy=bbox[3])
     
     conn.request(
@@ -102,13 +102,14 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=None, depth=0):
 
     features = json.load(resp).get('d', [])
     
-    if limit is None:
+    if limit == 0:
         # This is our first time through and we don't actually know how many
-        # things there are. Assume that the current number is the limit.
+        # things there are. Assume that the current count is the limit.
         limit = len(features)
 
     if len(features) >= limit:
         # There are too many features, recurse!
+        # This also happens the first time through before we know anything.
         bbox1, bbox2, bbox3, bbox4 = partition_bbox(*bbox)
         return recursively_descend(conn, layer_path, layer_id, bbox1, limit, depth+1) \
              + recursively_descend(conn, layer_path, layer_id, bbox2, limit, depth+1) \
