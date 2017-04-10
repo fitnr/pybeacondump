@@ -82,7 +82,7 @@ def partition_bbox(xmin, ymin, xmax, ymax):
         (xmid, ymid, xmax, ymax),
         ]
 
-def recursively_descend(conn, layer_path, layer_id, bbox, limit=None):
+def recursively_descend(conn, layer_path, layer_id, bbox, limit=None, depth=0):
     '''
     '''
     body = copy.deepcopy(BODY_TEMPLATE)
@@ -103,19 +103,20 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=None):
     features = json.load(resp).get('d', [])
     
     if limit is None:
-        # this is our first time, we don't actually know how many things there are
+        # This is our first time through and we don't actually know how many
+        # things there are. Assume that the current number is the limit.
         limit = len(features)
 
     if len(features) >= limit:
-        # there are too many features, recurse!
+        # There are too many features, recurse!
         bbox1, bbox2, bbox3, bbox4 = partition_bbox(*bbox)
-        return recursively_descend(conn, layer_path, layer_id, bbox1, limit) \
-             + recursively_descend(conn, layer_path, layer_id, bbox2, limit) \
-             + recursively_descend(conn, layer_path, layer_id, bbox3, limit) \
-             + recursively_descend(conn, layer_path, layer_id, bbox4, limit)
-    else:
-        # we are good.
-        return features
+        return recursively_descend(conn, layer_path, layer_id, bbox1, limit, depth+1) \
+             + recursively_descend(conn, layer_path, layer_id, bbox2, limit, depth+1) \
+             + recursively_descend(conn, layer_path, layer_id, bbox3, limit, depth+1) \
+             + recursively_descend(conn, layer_path, layer_id, bbox4, limit, depth+1)
+
+    # We are good.
+    return features
 
 if __name__ == '__main__':
     _, raw_url, layer_id = sys.argv
@@ -124,4 +125,6 @@ if __name__ == '__main__':
     bbox = get_starting_bbox(conn, layer_path, layer_id)
     print(bbox)
     
-    recursively_descend(conn, layer_path, layer_id, bbox)
+    features = recursively_descend(conn, layer_path, layer_id, bbox)
+    with open('out.json', 'w') as file:
+        json.dump(features, file, indent=2)
