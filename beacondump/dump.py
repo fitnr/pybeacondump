@@ -1,4 +1,5 @@
 import sys, json, copy
+import bs4, re, collections
 import http.client
 import urllib.parse
 import shapely.wkt
@@ -118,6 +119,34 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
 
     # We are good.
     return features
+
+def feature_properties(feature):
+    '''
+    '''
+    properties = collections.OrderedDict()
+    pattern = re.compile(r'^(\w+) = (.*)$', re.M)
+
+    html1 = feature.get('TipHtml', '').replace('\r\n', '\n')
+    html2 = feature.get('ResultHtml', '').replace('\r\n', '\n')
+
+    soup1 = bs4.BeautifulSoup(html1, 'html.parser')
+    soup2 = bs4.BeautifulSoup(html2, 'html.parser')
+    
+    for text in soup1.find_all(text=pattern):
+        properties.update({k: v for (k, v) in pattern.findall(text)})
+    
+    for text in soup2.find_all(text=pattern):
+        properties.update({k: v for (k, v) in pattern.findall(text)})
+    
+    return properties
+
+def feature_geometry(feature):
+    '''
+    '''
+    prop = feature_properties(feature)
+    geom = dict(type='Point', coordinates=[float(prop['Long']), float(prop['Lat'])])
+    
+    return geom
 
 if __name__ == '__main__':
     _, raw_url, layer_id = sys.argv

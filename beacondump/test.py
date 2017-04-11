@@ -140,6 +140,42 @@ class TestDump (unittest.TestCase):
             self.assertEqual(body['ext'], {
                 'minx': _bbox[0], 'miny': _bbox[1], 'maxx': _bbox[2], 'maxy': _bbox[3]
                 })
+
+    def test_feature_properties(self):
+        '''
+        '''
+        properties = dump.feature_properties(json.loads(Features['F1']))
+
+        self.assertEqual(properties, {
+            'Address': '160 VILLA DR', 'BLDING_SUI': ' ', 'CITY_LIMIT': 'TANEY COUNTY',
+            'COMMUNITY': 'HOLLISTER', 'created_date': '', 'created_user': '',
+            'DATAFILE': 'A053003.ssf', 'EASTING': '1408483.1000000001',
+            'Email_Dist': '', 'ESN': '12_166', 'FEAT_NAME': 'Address_',
+            'GPS_DATE': '1054252800000', 'GPS_HEIGHT': '0', 'GPS_TIME': '01:55:53pm',
+            'last_edited_date': '1490699094000', 'last_edited_user': 'ISGIS',
+            'Lat': '36.561191497240003', 'Long': '-93.289987614449998',
+            'NORTHING': '265915.70400000003', 'NOTES': ' ', 'Notes_2': '',
+            'Points_ID': '1', 'PROPERTY_N': '', 'STATE': 'MO', 'Status': '',
+            'STREET_DI2': ' ', 'STREET_DIR': ' ', 'STREET_NAM': 'VILLA',
+            'STREET_NUM': '160', 'STREET_SUF': 'DR', 'UNIT_OR_LO': '2',
+            'ZIP_CODE': '65672'})
+
+    def test_feature_geometry(self):
+        '''
+        '''
+        geom1 = dump.feature_geometry(json.loads(Features['F1']))
+        geom2 = dump.feature_geometry(json.loads(Features['F2']))
+        geom3 = dump.feature_geometry(json.loads(Features['F3']))
+        geom4 = dump.feature_geometry(json.loads(Features['F4']))
+
+        self.assertEqual(geom1, {'type': 'Point',
+            'coordinates': [-93.289987614449998, 36.561191497240003]})
+        self.assertEqual(geom2, {'type': 'Point',
+            'coordinates': [-93.289737463319995, 36.560894620340001]})
+        self.assertEqual(geom3, {'type': 'Point',
+            'coordinates': [-93.289311785600006, 36.560464849970003]})
+        self.assertEqual(geom4, {'type': 'Point',
+            'coordinates': [-93.289280288819995, 36.56103139348]})
         
 if __name__ == '__main__':
     unittest.main()
