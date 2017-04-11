@@ -2,7 +2,6 @@ import sys, json, copy
 import bs4, re, collections
 import http.client
 import urllib.parse
-import shapely.wkt
 
 BEACON_HEADERS = {
     'Content-Type': 'application/json',
@@ -22,6 +21,9 @@ BODY_TEMPLATE = {
     "spatialRelation": 1,
     "featureLimit": 1
     }
+
+name_value_pattern = re.compile(r'^(\w+) = (.*)$', re.M)
+coordinate_pattern = re.compile(r'(?P<x>-?\d+(\.\d+)?)\s+(?P<y>-?\d+(\.\d+)?)')
 
 def get_connection(raw_url):
     ''' Return an HTTPConnection and URL path for a starting Beacon URL.
@@ -67,7 +69,14 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
     if not wkt:
         raise RuntimeError('Missing WktGeometry in get_starting_bbox')
     
-    xmin, ymin, xmax, ymax = shapely.wkt.loads(wkt).buffer(radius_km*1000).bounds
+    match = coordinate_pattern.search(wkt)
+    
+    if not match:
+        raise RuntimeError('Unparseable WktGeometry in get_started_bbox')
+    
+    x, y = float(match.group('x')), float(match.group('y'))
+    xmin, ymin = x - radius_km * 1000, y - radius_km * 1000
+    xmax, ymax = x + radius_km * 1000, y + radius_km * 1000
 
     return xmin, ymin, xmax, ymax
 
@@ -125,7 +134,6 @@ def extract_properties(record):
     ''' Get a dictionary of GeoJSON feature properties for a record.
     '''
     properties = collections.OrderedDict()
-    pattern = re.compile(r'^(\w+) = (.*)$', re.M)
 
     html1 = record.get('TipHtml', '').replace('\r\n', '\n')
     html2 = record.get('ResultHtml', '').replace('\r\n', '\n')
@@ -133,11 +141,11 @@ def extract_properties(record):
     soup1 = bs4.BeautifulSoup(html1, 'html.parser')
     soup2 = bs4.BeautifulSoup(html2, 'html.parser')
     
-    for text in soup1.find_all(text=pattern):
-        properties.update({k: v for (k, v) in pattern.findall(text)})
+    for text in soup1.find_all(text=name_value_pattern):
+        properties.update({k: v for (k, v) in name_value_pattern.findall(text)})
     
-    for text in soup2.find_all(text=pattern):
-        properties.update({k: v for (k, v) in pattern.findall(text)})
+    for text in soup2.find_all(text=name_value_pattern):
+        properties.update({k: v for (k, v) in name_value_pattern.findall(text)})
     
     return properties
 

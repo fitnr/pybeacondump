@@ -20,6 +20,26 @@ class TestDump (unittest.TestCase):
         self.assertIs(conn, HTTPSConnection.return_value)
         self.assertEqual(path, '/api/beaconCore/GetVectorLayer?QPS=xxxx')
     
+    def test_coordinate_pattern(self):
+        '''
+        '''
+        wkts = [
+            'point(123 456)',
+            'multipoint((123 456))',
+            'linestring(( 123 456 , 789 123))',
+            'point(123 -456)',
+            'point(123 -456.0)',
+            'point( -123 456 )',
+            'point(-123.0  456)',
+            'point(-123  -456)',
+            'point(-123.0  -456.0)',
+            ]
+        
+        for wkt in wkts:
+            match = dump.coordinate_pattern.search(wkt)
+            self.assertEqual(abs(float(match.group('x'))), 123)
+            self.assertEqual(abs(float(match.group('y'))), 456)
+    
     def test_get_starting_bbox(self):
         '''
         '''
