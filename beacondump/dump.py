@@ -101,15 +101,15 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
     if resp.status not in range(200, 299):
         raise RuntimeError('Bad status in recursively_descend')
 
-    features = json.load(resp).get('d', [])
+    records = json.load(resp).get('d', [])
     
     if limit == 0:
         # This is our first time through and we don't actually know how many
         # things there are. Assume that the current count is the limit.
-        limit = len(features)
+        limit = len(records)
 
-    if len(features) >= limit:
-        # There are too many features, recurse!
+    if len(records) >= limit:
+        # There are too many records, recurse!
         # This also happens the first time through before we know anything.
         bbox1, bbox2, bbox3, bbox4 = partition_bbox(*bbox)
         return recursively_descend(conn, layer_path, layer_id, bbox1, limit, depth+1) \
@@ -118,16 +118,16 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
              + recursively_descend(conn, layer_path, layer_id, bbox4, limit, depth+1)
 
     # We are good.
-    return features
+    return records
 
-def feature_properties(feature):
+def extract_properties(record):
     '''
     '''
     properties = collections.OrderedDict()
     pattern = re.compile(r'^(\w+) = (.*)$', re.M)
 
-    html1 = feature.get('TipHtml', '').replace('\r\n', '\n')
-    html2 = feature.get('ResultHtml', '').replace('\r\n', '\n')
+    html1 = record.get('TipHtml', '').replace('\r\n', '\n')
+    html2 = record.get('ResultHtml', '').replace('\r\n', '\n')
 
     soup1 = bs4.BeautifulSoup(html1, 'html.parser')
     soup2 = bs4.BeautifulSoup(html2, 'html.parser')
@@ -140,10 +140,10 @@ def feature_properties(feature):
     
     return properties
 
-def feature_geometry(feature):
+def extract_geometry(record):
     '''
     '''
-    prop = feature_properties(feature)
+    prop = extract_properties(record)
     geom = dict(type='Point', coordinates=[float(prop['Long']), float(prop['Lat'])])
     
     return geom
@@ -155,6 +155,6 @@ if __name__ == '__main__':
     bbox = get_starting_bbox(conn, layer_path, layer_id)
     print(bbox)
     
-    features = recursively_descend(conn, layer_path, layer_id, bbox)
+    records = recursively_descend(conn, layer_path, layer_id, bbox)
     with open('out.json', 'w') as file:
-        json.dump(features, file, indent=2)
+        json.dump(records, file, indent=2)
