@@ -72,7 +72,7 @@ def get_starting_bbox(conn, layer_path, layer_id, radius_km=200):
     return xmin, ymin, xmax, ymax
 
 def partition_bbox(xmin, ymin, xmax, ymax):
-    '''
+    ''' Cut a bounding box into four smaller bounding boxes.
     '''
     xmid, ymid = xmin/2 + xmax/2, ymin/2 + ymax/2
     
@@ -84,6 +84,7 @@ def partition_bbox(xmin, ymin, xmax, ymax):
         ]
 
 def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
+    ''' Return a list of records after geographically searching a layer.
     '''
     '''
     body = copy.deepcopy(BODY_TEMPLATE)
@@ -121,7 +122,7 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
     return records
 
 def extract_properties(record):
-    '''
+    ''' Get a dictionary of GeoJSON feature properties for a record.
     '''
     properties = collections.OrderedDict()
     pattern = re.compile(r'^(\w+) = (.*)$', re.M)
@@ -141,20 +142,36 @@ def extract_properties(record):
     return properties
 
 def extract_geometry(record):
-    '''
+    ''' Get a GeoJSON geometry object for a record.
     '''
     prop = extract_properties(record)
-    geom = dict(type='Point', coordinates=[float(prop['Long']), float(prop['Lat'])])
     
+    try:
+        geom = dict(type='Point', coordinates=[float(prop['Long']), float(prop['Lat'])])
+    except ValueError:
+        geom = None
+
     return geom
 
+def make_feature(record):
+    ''' Get a complete GeoJSON feature object for a record.
+    '''
+    return dict(
+        type='Feature',
+        id=record.get('Key'),
+        geometry=extract_geometry(record),
+        properties=extract_properties(record)
+        )
+
 if __name__ == '__main__':
-    _, raw_url, layer_id = sys.argv
+    _, raw_url, layer_id, filename = sys.argv
     
     conn, layer_path = get_connection(raw_url)
     bbox = get_starting_bbox(conn, layer_path, layer_id)
-    print(bbox)
+    print(bbox, file=sys.stderr)
     
-    records = recursively_descend(conn, layer_path, layer_id, bbox)
-    with open('out.json', 'w') as file:
-        json.dump(records, file, indent=2)
+    features = map(make_feature, recursively_descend(conn, layer_path, layer_id, bbox))
+    geojson = dict(type='FeatureCollection', features=list(features))
+    
+    with open(filename, 'w') as file:
+        json.dump(geojson, file, indent=2)
