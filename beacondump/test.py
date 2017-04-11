@@ -42,7 +42,7 @@ class TestDump (unittest.TestCase):
         boxes = dump.partition_bbox(0, 1, 2, 3)
         self.assertEqual(boxes, [(0, 1, 1, 2), (0, 2, 1, 3), (1, 1, 2, 2), (1, 2, 2, 3)])
     
-    def test_recursively_descend1(self):
+    def test_get_features1(self):
         '''
         '''
         conn = unittest.mock.Mock()
@@ -67,11 +67,11 @@ class TestDump (unittest.TestCase):
             ]
         conn.getresponse.return_value.read.side_effect = lambda: responses.pop(0)
 
-        records = dump.recursively_descend(conn, path, 13494, bbox)
-        keys = {f.get('Key') for f in records}
+        features = dump.get_features(conn, path, 13494, bbox)
+        ids = {f.get('id') for f in features}
 
-        self.assertEqual(keys, {'1', '2', '3', '4'})
-        self.assertEqual(len(records), 4)
+        self.assertEqual(ids, {'1', '2', '3', '4'})
+        self.assertEqual(len(features), 4)
         self.assertEqual(len(conn.request.mock_calls), 5)
         
         for (_bbox, (_, args, kwargs)) in zip(bboxes, conn.request.mock_calls):
@@ -85,7 +85,7 @@ class TestDump (unittest.TestCase):
                 'minx': _bbox[0], 'miny': _bbox[1], 'maxx': _bbox[2], 'maxy': _bbox[3]
                 })
     
-    def test_recursively_descend2(self):
+    def test_get_features2(self):
         '''
         '''
         conn = unittest.mock.Mock()
@@ -123,11 +123,11 @@ class TestDump (unittest.TestCase):
             ]
         conn.getresponse.return_value.read.side_effect = lambda: responses.pop(0)
 
-        records = dump.recursively_descend(conn, path, 13494, bbox)
-        keys = {f.get('Key') for f in records}
+        features = dump.get_features(conn, path, 13494, bbox)
+        ids = {f.get('id') for f in features}
 
-        self.assertEqual(keys, {'1', '2', '3', '4'})
-        self.assertEqual(len(records), 4)
+        self.assertEqual(ids, {'1', '2', '3', '4'})
+        self.assertEqual(len(features), 4)
         self.assertEqual(len(conn.request.mock_calls), 9)
         
         for (_bbox, (_, args, kwargs)) in zip(bboxes, conn.request.mock_calls):

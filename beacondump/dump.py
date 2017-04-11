@@ -83,9 +83,8 @@ def partition_bbox(xmin, ymin, xmax, ymax):
         (xmid, ymid, xmax, ymax),
         ]
 
-def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
-    ''' Return a list of records after geographically searching a layer.
-    '''
+def get_features(conn, layer_path, layer_id, bbox, limit=0, depth=0):
+    ''' Return a list of features after geographically searching a layer.
     '''
     body = copy.deepcopy(BODY_TEMPLATE)
     body['layerId'], body['featureLimit'] = int(layer_id), limit
@@ -100,7 +99,7 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
     resp = conn.getresponse()
     
     if resp.status not in range(200, 299):
-        raise RuntimeError('Bad status in recursively_descend')
+        raise RuntimeError('Bad status in get_features')
 
     records = json.load(resp).get('d', [])
     
@@ -113,13 +112,14 @@ def recursively_descend(conn, layer_path, layer_id, bbox, limit=0, depth=0):
         # There are too many records, recurse!
         # This also happens the first time through before we know anything.
         bbox1, bbox2, bbox3, bbox4 = partition_bbox(*bbox)
-        return recursively_descend(conn, layer_path, layer_id, bbox1, limit, depth+1) \
-             + recursively_descend(conn, layer_path, layer_id, bbox2, limit, depth+1) \
-             + recursively_descend(conn, layer_path, layer_id, bbox3, limit, depth+1) \
-             + recursively_descend(conn, layer_path, layer_id, bbox4, limit, depth+1)
+        return get_features(conn, layer_path, layer_id, bbox1, limit, depth+1) \
+             + get_features(conn, layer_path, layer_id, bbox2, limit, depth+1) \
+             + get_features(conn, layer_path, layer_id, bbox3, limit, depth+1) \
+             + get_features(conn, layer_path, layer_id, bbox4, limit, depth+1)
 
-    # We are good.
-    return records
+    # We are good, make some GeoJSON.
+    print(' ' * depth, 'found', len(records), 'in', bbox, file=sys.stderr)
+    return [make_feature(record) for record in records]
 
 def extract_properties(record):
     ''' Get a dictionary of GeoJSON feature properties for a record.
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     bbox = get_starting_bbox(conn, layer_path, layer_id)
     print(bbox, file=sys.stderr)
     
-    features = map(make_feature, recursively_descend(conn, layer_path, layer_id, bbox))
+    features = get_features(conn, layer_path, layer_id, bbox)
     geojson = dict(type='FeatureCollection', features=list(features))
     
     with open(filename, 'w') as file:
