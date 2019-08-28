@@ -34,6 +34,31 @@ name_value_pattern = re.compile(r'^(\w+) = (.*)$', re.M)
 coordinate_pattern = re.compile(r'(?P<x>-?\d+(\.\d+)?)\s+(?P<y>-?\d+(\.\d+)?)')
 
 
+def get_parameters(url):
+    scheme, host, path, _, query, _ = urllib.parse.urlparse(url)
+    layer_path = urllib.parse.urlunparse(('', '', path, None, query, None))
+
+    if scheme == 'https':
+        conn, layer_path = http.client.HTTPSConnection(host), layer_path
+
+    if scheme == 'http':
+        conn, layer_path = http.client.HTTPConnection(host), layer_path
+
+    conn.request(
+        'GET', url=layer_path,
+        headers=BEACON_HEADERS
+    )
+
+    resp = conn.getresponse()
+
+    if resp.status not in range(200, 299):
+        raise RuntimeError('Bad status in %s' % url)
+
+    page = resp.read().decode('utf-8')
+    match = re.search(r'var mapConfig = ([^;]+?);', page)
+    return json.loads(match.group(1))
+
+
 def get_connection(raw_url):
     ''' Return an HTTPConnection and URL path for a starting Beacon URL.
 
@@ -194,16 +219,19 @@ def make_feature(record):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('url', help='raw URL, e.g. https://beacon.schneidercorp.com/api/beaconCore/GetVectorLayer?QPS=xxxx')
-    parser.add_argument('layer_id')
+    parser.add_argument('url', help='map URL')
     parser.add_argument('file', help='output file')
     args = parser.parse_args()
 
-    conn, layer_path = get_connection(args.url)
-    bbox = get_starting_bbox(conn, layer_path, args.layer_id)
+    params = get_parameters(args.url)
+    url = 'https://beacon.schneidercorp.com/api/beaconCore/GetVectorLayer?QPS=' + params['QPS']
+    layer_id = params['LayerId']
+
+    conn, layer_path = get_connection(url)
+    bbox = get_starting_bbox(conn, layer_path, layer_id)
     print(bbox, file=sys.stderr)
 
-    features = get_features(conn, layer_path, args.layer_id, bbox)
+    features = get_features(conn, layer_path, layer_id, bbox)
     geojson = dict(type='FeatureCollection', features=list(features))
 
     with open(args.file, 'w') as file:
